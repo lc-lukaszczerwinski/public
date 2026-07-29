@@ -1,0 +1,63 @@
+diff --git a/scripts/build_baselines.sh b/scripts/build_baselines.sh
+index 7c3babd..e49df82 100755
+--- a/scripts/build_baselines.sh
++++ b/scripts/build_baselines.sh
+@@ -2,7 +2,7 @@
+ #
+ # build_baselines.sh — fetch and build the three reference engine adapters.
+ #
+-#   scripts/build_baselines.sh [liquibook|quantcup|exchange_core|all]
++#   scripts/build_baselines.sh [liquibook|quantcup|lcv3|exchange_core|all]
+ #
+ # Each engine's public source is cloned into third_party/<engine>/ at a pinned
+ # commit and compiled, together with its adapter, into <engine>_adapter.so at
+@@ -29,6 +29,8 @@ LIQUIBOOK_URL="https://github.com/ObjectComputing/liquibook.git"
+ LIQUIBOOK_REF="2427613b32f1667abae68a01df6af9ba8270f8e7"
+ QUANTCUP_URL="https://github.com/ajtulloch/quantcup-orderbook.git"
+ QUANTCUP_REF="f860e0b831a7dd2d0c07a5dbc3723ef15d1067ed"
++LCV3_URL="https://github.com/lc-lukaszczerwinski/public.git"
++LCV3_REF="v1.0"
+ EXCHANGE_CORE_URL="https://github.com/exchange-core/exchange-core.git"
+ EXCHANGE_CORE_REF="2f8548749839e9095c8dc597e4b61521d259fa5d"
+ 
+@@ -230,13 +232,38 @@ build_exchange_core() {
+     echo "built: exchange_core_adapter.so + HarnessExchangeCore.class + exchange_core.classpath"
+ }
+ 
++build_lcv3() {
++    #
++    # LC++ Lukasz Czerwinski
++    # https://github.com/lc-lukaszczerwinski/public
++    #
++
++    say "LC++-v3"
++    local src
++
++    if [ -n "${ME_LCV3_SRC:-}" ]; then
++        src="$ME_LCV3_SRC"
++    else
++        src="$TP/lcv3"
++        clone_pinned "$LCV3_URL" "$LCV3_REF" "$src"
++    fi
++
++    g++ $CXXFLAGS -fexceptions -frtti \
++        -I "$REPO/api" -I "$src" \
++        "$REPO/adapters/lcv3_adapter.cpp" \
++        -o "$REPO/lcv3_adapter.so"
++
++    echo "built: lcv3_adapter.so"
++}
++
+ for ENGINE in "${ENGINES[@]}"; do
+     case "$ENGINE" in
+         liquibook)                   build_liquibook ;;
+         quantcup)                    build_quantcup ;;
++        lcv3)                        build_lcv3 ;;
+         exchange_core|exchange-core) build_exchange_core ;;
+-        all)  build_liquibook; build_quantcup; build_exchange_core ;;
+-        *) echo "usage: $0 {liquibook|quantcup|exchange_core|all} [...]" >&2; exit 2 ;;
++        all)  build_liquibook; build_quantcup; build_lcv3;build_exchange_core ;;
++        *) echo "usage: $0 {liquibook|quantcup|lcv3|exchange_core|all} [...]" >&2; exit 2 ;;
+     esac
+ done
+ 
