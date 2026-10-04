@@ -1,52 +1,17 @@
 
-# LC++ Łukasz Czerwiński offers
-
-### __Data Structures & Memory Architecture__  
-Design of custom data structures, allocators, and memory layouts optimized for locality, cache efficiency, and deterministic performance.
-  
-### __Algorithms & Performance Engineering__  
-Performance-focused algorithm design with emphasis on low latency, predictable behavior, and bottleneck elimination.
-
-### __Matching Engine & Market Infrastructure__  
-Architecture and implementation of matching engines, order-processing pipelines, and market-data systems for real-time environments.
-
-### __Consulting & Technical Advisory__  
-Technical consulting for performance-critical systems, architecture modernization, and engineering decision support.
+# LC++ | C++ and Python Consulting for Financial Systems
 
 ## DEMO
 
 [![Build](https://github.com/lc-lukaszczerwinski/public/actions/workflows/build.yml/badge.svg)](https://github.com/lc-lukaszczerwinski/public/actions/workflows/build.yml)
 
-**order_book_v3** - a minimalistic order book with zero external dependencies. Supports limit orders, market orders, immediate-or-cancel (IOC), insert, quantity/price update and cancellation, producing events in just a few nanoseconds. Built as a treap for price priority and intrusive FIFO lists for time priority providing deterministic bahaviour and O(1) order updates and cancellations via OrderId.
-  
-```cpp
-  Event event;
-  EventHandler eh;
-  OrderBook oBook(eh);
+All order books are minimalistic, header-only implementations with zero external dependencies. They support limit orders, market orders, immediate-or-cancel (IOC) orders, order updates, and cancellations.
 
-  oBook.template insert_order<Sell /* -1 */>(/* orderId */ 1, /* price */ 100, /* qty */ 10);
-  event = oBook.eh().pop();
-  assert(event.type == ORDER_ACK);
-  assert(event.maker == 1);
-  assert(event.side == Sell);
-  assert(event.price == price);
-  assert(event.qty == 10);
-
-  oBook.template insert_order<Buy /* +1 */>(/* orderId */ 2, /* price */ 101, /* qty */ 5);
-  event = oBook.eh().pop();
-  assert(event.type == ORDER_ACK);
-  assert(event.maker == 2);
-  assert(event.side == Buy);
-  assert(event.price == price);
-  assert(event.qty == 5);
-
-  event = oBook.eh().pop();
-  assert(event.type == TRADE);
-  assert(event.maker == 1);
-  assert(event.taker == 2);
-  assert(event.price == price);
-  assert(event.qty == 5);
-```
+| Version | Levels | Orders | OrderId resolution | time (p50) | throughput (p50) |
+|---|---|---|---|---|---|
+| v2 | Fixed (array) | Fixed (static pool) | Resolves via SlotId | 21.0 ns | 47,610,441 |
+| v3 | Unlimited (treap) | Fixed (static pool) | Resolves via SlotId | 23.7 ns | 42,243,974 |
+| v4 | Unlimited (treap) | Unlimited (dynamic pool) | Internally (open-hash) | 28.5 ns | 35,035,986 |
 
 ### Benchmark Methodology
 
@@ -55,52 +20,74 @@ Technical consulting for performance-critical systems, architecture modernizatio
 - Execution: 100 consecutive process runs in the same shell session
 - Workload: deterministic synthetic flow with mixed limit, market, and cancel requests
 
-### Benchmark Results (Real Runs)
+### Detailed Benchmark Results
 
 ```bash
-$ for((i=0; i<101; i++)); do ./order_book_v3 ; done | sort -n
-Release :: 1000000 iters :: 35301500 iter/s :: 28.3 ns/iter :: 87.0 cyc/iter
-Release :: 1000000 iters :: 36204276 iter/s :: 27.6 ns/iter :: 84.8 cyc/iter
-Release :: 1000000 iters :: 36756199 iter/s :: 27.2 ns/iter :: 83.6 cyc/iter
-Release :: 1000000 iters :: 37381638 iter/s :: 26.8 ns/iter :: 82.2 cyc/iter
-Release :: 1000000 iters :: 37519465 iter/s :: 26.7 ns/iter :: 81.9 cyc/iter
-Release :: 1000000 iters :: 37523480 iter/s :: 26.6 ns/iter :: 81.9 cyc/iter
-Release :: 1000000 iters :: 37547187 iter/s :: 26.6 ns/iter :: 81.8 cyc/iter
-Release :: 1000000 iters :: 37937061 iter/s :: 26.4 ns/iter :: 81.0 cyc/iter
-Release :: 1000000 iters :: 38580775 iter/s :: 25.9 ns/iter :: 79.6 cyc/iter
-Release :: 1000000 iters :: 38609494 iter/s :: 25.9 ns/iter :: 79.6 cyc/iter
+$ for((i=0;i<101;i++)); do ./order_book_v2 ; done | sort -n
+Release :: 1000000 iters :: 41295700 iter/s :: 24.2 ns/iter :: 74.4 cyc/iter
+Release :: 1000000 iters :: 41480335 iter/s :: 24.1 ns/iter :: 74.0 cyc/iter
+Release :: 1000000 iters :: 41556923 iter/s :: 24.1 ns/iter :: 73.9 cyc/iter
+Release :: 1000000 iters :: 41570332 iter/s :: 24.1 ns/iter :: 73.9 cyc/iter
+Release :: 1000000 iters :: 44772070 iter/s :: 22.3 ns/iter :: 68.6 cyc/iter
 ...
-Release :: 1000000 iters :: 40882589 iter/s :: 24.5 ns/iter :: 75.1 cyc/iter # median
+Release :: 1000000 iters :: 47610441 iter/s :: 21.0 ns/iter :: 64.5 cyc/iter # median
 ...
-Release :: 1000000 iters :: 42166042 iter/s :: 23.7 ns/iter :: 72.9 cyc/iter
-Release :: 1000000 iters :: 42181513 iter/s :: 23.7 ns/iter :: 72.8 cyc/iter
-Release :: 1000000 iters :: 42184840 iter/s :: 23.7 ns/iter :: 72.8 cyc/iter
-Release :: 1000000 iters :: 42188387 iter/s :: 23.7 ns/iter :: 72.8 cyc/iter
-Release :: 1000000 iters :: 42220002 iter/s :: 23.7 ns/iter :: 72.8 cyc/iter
-Release :: 1000000 iters :: 42223551 iter/s :: 23.7 ns/iter :: 72.7 cyc/iter
-Release :: 1000000 iters :: 42281302 iter/s :: 23.7 ns/iter :: 72.6 cyc/iter
-Release :: 1000000 iters :: 42282899 iter/s :: 23.7 ns/iter :: 72.6 cyc/iter
-Release :: 1000000 iters :: 42342441 iter/s :: 23.6 ns/iter :: 72.5 cyc/iter
-Release :: 1000000 iters :: 42361280 iter/s :: 23.6 ns/iter :: 72.5 cyc/iter
+Release :: 1000000 iters :: 47641221 iter/s :: 21.0 ns/iter :: 64.5 cyc/iter
+Release :: 1000000 iters :: 47655290 iter/s :: 21.0 ns/iter :: 64.5 cyc/iter
+Release :: 1000000 iters :: 47784557 iter/s :: 20.9 ns/iter :: 64.3 cyc/iter
+Release :: 1000000 iters :: 47911740 iter/s :: 20.9 ns/iter :: 64.1 cyc/iter
+Release :: 1000000 iters :: 47926932 iter/s :: 20.9 ns/iter :: 64.1 cyc/iter
+```
+
+```bash
+$ for((i=0;i<101;i++)); do ./order_book_v3 ; done | sort -n
+Release :: 1000000 iters :: 36186591 iter/s :: 27.6 ns/iter :: 84.9 cyc/iter
+Release :: 1000000 iters :: 36355976 iter/s :: 27.5 ns/iter :: 84.5 cyc/iter
+Release :: 1000000 iters :: 36740787 iter/s :: 27.2 ns/iter :: 83.6 cyc/iter
+Release :: 1000000 iters :: 36989531 iter/s :: 27.0 ns/iter :: 83.0 cyc/iter
+Release :: 1000000 iters :: 39386725 iter/s :: 25.4 ns/iter :: 78.0 cyc/iter
+...
+Release :: 1000000 iters :: 42243974 iter/s :: 23.7 ns/iter :: 72.7 cyc/iter # median
+...
+Release :: 1000000 iters :: 42268937 iter/s :: 23.7 ns/iter :: 72.7 cyc/iter
+Release :: 1000000 iters :: 42281706 iter/s :: 23.7 ns/iter :: 72.6 cyc/iter
+Release :: 1000000 iters :: 42299924 iter/s :: 23.6 ns/iter :: 72.6 cyc/iter
+Release :: 1000000 iters :: 42355738 iter/s :: 23.6 ns/iter :: 72.5 cyc/iter
+Release :: 1000000 iters :: 42363527 iter/s :: 23.6 ns/iter :: 72.5 cyc/iter
 ```
   
-## Matching Engine Benchmark integration
+```bash
+$ for((i=0;i<101;i++)); do ./order_book_v4 ; done | sort -n
+Release :: 1000000 iters :: 28152300 iter/s :: 35.5 ns/iter :: 109.1 cyc/iter
+Release :: 1000000 iters :: 28504660 iter/s :: 35.1 ns/iter :: 107.8 cyc/iter
+Release :: 1000000 iters :: 29220092 iter/s :: 34.2 ns/iter :: 105.1 cyc/iter
+Release :: 1000000 iters :: 29283969 iter/s :: 34.1 ns/iter :: 104.9 cyc/iter
+Release :: 1000000 iters :: 32671074 iter/s :: 30.6 ns/iter :: 94.0 cyc/iter
+...
+Release :: 1000000 iters :: 35035986 iter/s :: 28.5 ns/iter :: 87.7 cyc/iter # median
+...
+Release :: 1000000 iters :: 35175620 iter/s :: 28.4 ns/iter :: 87.3 cyc/iter
+Release :: 1000000 iters :: 35193717 iter/s :: 28.4 ns/iter :: 87.3 cyc/iter
+Release :: 1000000 iters :: 35275694 iter/s :: 28.3 ns/iter :: 87.1 cyc/iter
+Release :: 1000000 iters :: 35388728 iter/s :: 28.3 ns/iter :: 86.8 cyc/iter
+Release :: 1000000 iters :: 35519978 iter/s :: 28.2 ns/iter :: 86.5 cyc/iter
+```
 
-https://github.com/flash1-dev/matching-engine-benchmark/blob/main/README.md
+## Matching Engine Benchmark Integration
 
-Our matching engine is integrated with the open-source Matching Engine Algorithm Performance Challenge, a reproducible benchmarking framework designed to evaluate publicly available FIFO matching engines under identical conditions. The project provides a standardized workload, a common correctness oracle, and a unified integration model, allowing different matching engine implementations to be compared on a fair, like-for-like basis. The benchmark has been used to evaluate hundreds of open-source matching engines across multiple languages and architectures.
+Reference project: [flash1-dev](https://github.com/flash1-dev/matching-engine-benchmark)
 
-To participate in the benchmark, we developed a dedicated adapter that exposes our Order Book v3 implementation through the interface expected by the flash1-dev harness. The adapter acts as a lightweight compatibility layer, enabling the benchmark runner to load, execute, and validate our matching engine using the same methodology applied to every other engine in the benchmark ecosystem.
+The Order Book v3 is integrated with the open-source Matching Engine Algorithm Performance Challenge, a reproducible benchmarking framework designed to evaluate publicly available FIFO matching engines under identical conditions. The project provides a standardized workload, a common correctness oracle, and a unified integration model, allowing different matching engine implementations to be compared on a fair, like-for-like basis.
 
-In addition, we created a build integration patch for the benchmark's baseline build pipeline. This allows our engine to be built and executed using the same workflow and conventions employed throughout the repository, making performance and correctness comparisons straightforward, reproducible, and consistent with the benchmark's established methodology.
+To participate in the benchmark, I developed a dedicated adapter that exposes the Order Book v3 implementation through the interface expected by the flash1-dev harness. The adapter acts as a lightweight compatibility layer, enabling the benchmark runner to load, execute, and validate our matching engine using the same methodology applied to every other engine in the benchmark ecosystem.
 
 Implemented components
 
-• flash1-dev/adapters/lcv3_adapter.cpp
- Adapter exposing order_book v3 through the flash1-dev benchmark interface.
+- flash1-dev/adapters/lcv3_adapter.cpp
+  Adapter exposing the Order Book v3 through the flash1-dev benchmark interface.
 
-• flash1-dev/scripts/build_baselines.sh.patch
- Build pipeline extension enabling automated compilation and benchmarking alongside the repository's reference implementations.
+- flash1-dev/scripts/build_baselines.sh.patch
+  Build pipeline extension enabling automated compilation and benchmarking alongside the repository's reference implementations.
 
  ```bash
 $ ./harness --baseline lcv3 --scenario normal --mode perf

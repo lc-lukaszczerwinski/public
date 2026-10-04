@@ -64,3 +64,5 @@ static constexpr Price MaxPrice = 128 * 1024 * 1024;
 
 static constexpr Qty MinQty = 1;
 static constexpr Qty MaxQty = 64 * 1024 * 1024;
+
+constexpr unsigned int CacheLineSize = 64;

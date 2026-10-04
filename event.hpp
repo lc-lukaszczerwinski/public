@@ -19,8 +19,14 @@ typedef enum : uint8_t {
     TRADE         = 1,
     CANCEL_ACK    = 2,
     MODIFY_ACK    = 3,
-    CANCEL_REJECT = 4,   /* cancel of an order that is not resting */
-    MODIFY_REJECT = 5    /* modify of an order that is not resting */
+    CANCEL_REJECT = 4,
+    MODIFY_REJECT = 5,
+
+    /* EXTENSION */
+
+    ORDER_REJECT  = 6,
+    LEVEL_CREATE  = 7,
+    LEVEL_REMOVE  = 8,
 } Type;
 
 /*
@@ -56,6 +62,10 @@ inline Event OrderACK(Id seq, Id id, Side side, Price price, Qty qty)  noexcept 
   return {.type = ORDER_ACK, .side = side, .seq = seq, .maker = id, .price = price, .qty = qty};
 }
 
+inline Event OrderReject(Id seq, Id id)  noexcept {
+  return {.type = ORDER_REJECT, .seq = seq, .maker = id};
+}
+
 inline Event ModifyACK(Id seq, Id id, Side side, Price newPrice, Qty newQty)  noexcept {
   return {.type = MODIFY_ACK, .side = side, .seq = seq, .maker = id, .price = newPrice, .qty = newQty};
 }
@@ -70,6 +80,14 @@ inline Event CancelACK(Id seq, Id id, Side side, Price price, Qty qty)  noexcept
 
 inline Event CancelReject(Id seq, Id id)  noexcept {
   return {.type = CANCEL_REJECT, .seq = seq, .maker = id};
+}
+
+inline Event LevelCreate(Price price)  noexcept {
+  return {.type = LEVEL_CREATE, .price = price};
+}
+
+inline Event LevelRemove(Price price)  noexcept {
+  return {.type = LEVEL_REMOVE, .price = price};
 }
 
 std::string to_string(const Event& e)  noexcept {

@@ -6,4 +6,6 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+add_executable(order_book_v2 order_book_v2.cpp)
 add_executable(order_book_v3 order_book_v3.cpp)
+add_executable(order_book_v4 order_book_v4.cpp)

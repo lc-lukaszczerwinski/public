@@ -13,6 +13,7 @@
 
 #include "command.hpp"
 #include "common.hpp"
+#include "event.hpp"
 #include "random.hpp"
 #include "timer.hpp"
 
@@ -111,7 +112,7 @@ private: /* members */
 template<typename OBook, Side side>
 void test_insert(Price price) {
   typename OBook::EventHandler eh;
-  OBook oBook(eh);
+  OBook oBook(eh, price);
 
   oBook.template insert_order<side>(1, price, 100);
   Event event = oBook.eh().pop();
@@ -133,7 +134,7 @@ void test_insert(Price price) {
 template<typename OBook, Side side>
 void test_delete(Price price) {
   typename OBook::EventHandler eh;
-  OBook oBook(eh);
+  OBook oBook(eh, price);
 
   const Index slot = oBook.template insert_order<side>(1, price, 100);
   Event event = oBook.eh().pop();
@@ -149,7 +150,7 @@ void test_delete(Price price) {
 template<typename OBook, Side side>
 void test_double_delete(Price price) {
   typename OBook::EventHandler eh;
-  OBook oBook(eh);
+  OBook oBook(eh, price);
 
   const Index slot = oBook.template insert_order<side>(1, price, 100);
   Event event = oBook.eh().pop();
@@ -170,7 +171,7 @@ void test_double_delete(Price price) {
 template<typename OBook, Side side>
 void test_trade(Price price) {
   typename OBook::EventHandler eh;
-  OBook oBook(eh);
+  OBook oBook(eh, price);
   Event event;
 
   oBook.template insert_order<side>(1, price, 100);
@@ -200,7 +201,7 @@ void test_trade(Price price) {
 template<typename OBook, Side side>
 void test_trade_level(Price price, Price tradePrice) {
   typename OBook::EventHandler eh;
-  OBook oBook(eh);
+  OBook oBook(eh, price);
 
   const Qty qty = 100;
   const Index orders = 8;
@@ -228,7 +229,7 @@ void test_trade_level(Price price, Price tradePrice) {
 template<typename OBook, Side side>
 void test_trade_level(Price price) {
   typename OBook::EventHandler eh;
-  OBook oBook(eh);
+  OBook oBook(eh, price);
 
   for(int32_t price = 1; price <= 128; price++) {
     test_trade_level<OBook, side>(price, price);
@@ -238,7 +239,7 @@ void test_trade_level(Price price) {
 template<typename OBook>
 void test_trend(int32_t price, int32_t trend = 1) {
   typename OBook::EventHandler eh;
-  OBook oBook(eh);
+  OBook oBook(eh, price);
 
   const Price minPrice = 1;
   const Price maxPrice = 128;
