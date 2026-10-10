@@ -292,7 +292,7 @@ public: /* api */
       _levelPool.destroy(level);
     }
 
-    _events.cancelACK(seq, id, side, price, 0);
+    _events.cancelACK(seq, id, side, price, qty);
   }
 
   template<Side side>

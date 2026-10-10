@@ -352,7 +352,8 @@ public: /* api */
     PriceLevel* const level = order->level;
     assert(level != nullptr);
     level->template cancel<side>(*order);
-
+    
+    const Qty qty = order->qty;
     // dead-store elimination when Order has a trivial destructor
     ((volatile Order*)(order))->id = 0;
     ((volatile Order*)(order))->qty = 0;
@@ -364,7 +365,7 @@ public: /* api */
       _levelPool.destroy(level);
     }
 
-    _events.cancelACK(seq, id, side, price, 0);
+    _events.cancelACK(seq, id, side, price, qty);
   }
 
   template<Side side>

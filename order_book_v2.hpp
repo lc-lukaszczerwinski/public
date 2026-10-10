@@ -252,6 +252,8 @@ public: /* api */
 
     PriceLevel& level = get_level_by_price(price);
     level.template cancel<side>(*order);
+    
+    const Qty qty = order->qty;
 
     if(UNLIKELY(level.empty())) {
       if constexpr(side == Sell) {
@@ -266,7 +268,7 @@ public: /* api */
     }
 
     _orderPool.destroy(order);
-    _events.cancelACK(seq, id, side, price, 0);
+    _events.cancelACK(seq, id, side, price, qty);
   }
 
 private: /* impl */
