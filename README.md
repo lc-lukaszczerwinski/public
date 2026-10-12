@@ -73,39 +73,10 @@ Release :: 1000000 iters :: 35388728 iter/s :: 28.3 ns/iter :: 86.8 cyc/iter
 Release :: 1000000 iters :: 35519978 iter/s :: 28.2 ns/iter :: 86.5 cyc/iter
 ```
 
-## Matching Engine Benchmark Integration
+## 🏆Matching Engine Benchmark Award
 
-Reference project: [flash1-dev](https://github.com/flash1-dev/matching-engine-benchmark)
+ Order Book v3 has been listed as the fastest open-source conforming implementation evaluated on the benchmark harness (October 2026) by the flash1-dev [Matching Engine Benchmark](https://github.com/flash1-dev/matching-engine-benchmark).
 
-The Order Book v3 is integrated with the open-source Matching Engine Algorithm Performance Challenge, a reproducible benchmarking framework designed to evaluate publicly available FIFO matching engines under identical conditions. The project provides a standardized workload, a common correctness oracle, and a unified integration model, allowing different matching engine implementations to be compared on a fair, like-for-like basis.
-
-To participate in the benchmark, I developed a dedicated adapter that exposes the Order Book v3 implementation through the interface expected by the flash1-dev harness. The adapter acts as a lightweight compatibility layer, enabling the benchmark runner to load, execute, and validate our matching engine using the same methodology applied to every other engine in the benchmark ecosystem.
-
-Implemented components
-
-- flash1-dev/adapters/lcv3_adapter.cpp
-  Adapter exposing the Order Book v3 through the flash1-dev benchmark interface.
-
-- flash1-dev/scripts/build_baselines.sh.patch
-  Build pipeline extension enabling automated compilation and benchmarking alongside the repository's reference implementations.
-
- ```bash
-$ ./harness --baseline lcv3 --scenario normal --mode perf
-Loading engine: ./lcv3_adapter.so
-Running benchmark (1996097 messages, scenario=normal, mode=perf)...
-  Messages processed: 1996097
-  Trades emitted:     62474
-  Wall time:          0.1176 s
-  Throughput:         16.97 M msgs/s
-  Engine threads:     after_init 2, after_run 2 (+0) — informational
-  Pre-build cost:     1.5 ns/msg (3% of the timed run) — informational
-
-Correctness check:
-  Expected hash: e9b2e3926854410b01a035aeb25dd05f1e597c233be8263de9eb49b6713d367e
-  Computed hash: e9b2e3926854410b01a035aeb25dd05f1e597c233be8263de9eb49b6713d367e
-  Status: PASS
-
-Verdict: VALID
-
-Result file: results/lcv3_normal_perf_s23_20261003T212048_p18608.json
-```
+| Engine | Language | Conformance | Worst-case M/s | Published figure | Notes |
+|:-------|:---------|:------------|:---------------|:-----------------|:------|
+| lcv3 / LC++ v3 | C++ | as shipped | 9.25 (normal) | ~42M/s | treap price levels + intrusive FIFO; ARM build needs an empty stand-in for the engine's x86-only `immintrin.h` include (engine unmodified) |
