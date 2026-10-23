@@ -15,18 +15,22 @@
  */
 
 typedef enum : uint8_t {
-    ORDER_ACK     = 0,
-    TRADE         = 1,
-    CANCEL_ACK    = 2,
-    MODIFY_ACK    = 3,
-    CANCEL_REJECT = 4,
-    MODIFY_REJECT = 5,
+  /* deprecated */ ORDER_ACK = 0,
+  ORDER_ACCEPTED = 0,
 
-    /* EXTENSION */
+  /* deprecated */ TRADE = 1,
+  ORDER_TRADED = 1,
 
-    ORDER_REJECT  = 6,
-    LEVEL_CREATE  = 7,
-    LEVEL_REMOVE  = 8,
+  CANCEL_ACK = 2,
+  MODIFY_ACK = 3,
+  CANCEL_REJECT = 4,
+  MODIFY_REJECT = 5,
+
+  /* EXTENSION */
+
+  ORDER_REJECT = 6,
+  LEVEL_CREATE = 7,
+  LEVEL_REMOVE = 8,
 } Type;
 
 /*
@@ -37,60 +41,61 @@ struct Event {
   /* int8_t  */ Type type{0};
   /* int8_t  */ Side side{0};
   /* int48_t */ char padding1[6]{0};
-  
+
   /* int64_t */ Id seq{0};
   /* int64_t */ Id maker{0};
   /* int64_t */ Id taker{0};
-  
+
   /* int32_t */ Price price{0};
   /* int32_t */ Qty qty{0};
+  /* int32_t */ Qty leavesQty{0};
 
-  /* int192_t */ char padding2[24]{0};
+  /* int192_t */ char padding2[20]{0};
 };
 
 static_assert(sizeof(Event) == 64);
 
-inline bool operator==(const Event& lhs, const Event& rhs)  noexcept {
+inline bool operator==(const Event& lhs, const Event& rhs) noexcept {
   return true;
 }
 
-inline Event Trade(Id seq, Id maker, Id taker, Price price, Qty qty)  noexcept {
-  return {.type = TRADE, .maker = maker, .taker = taker, .price = price, .qty = qty};
+inline Event Trade(Id seq, Id maker, Id taker, Price price, Qty qty) noexcept {
+  return {.type = ORDER_TRADED, .maker = maker, .taker = taker, .price = price, .qty = qty};
 }
 
-inline Event OrderACK(Id seq, Id id, Side side, Price price, Qty qty)  noexcept {
-  return {.type = ORDER_ACK, .side = side, .seq = seq, .maker = id, .price = price, .qty = qty};
+inline Event OrderACK(Id seq, Id id, Side side, Price price, Qty qty) noexcept {
+  return {.type = ORDER_ACCEPTED, .side = side, .seq = seq, .maker = id, .price = price, .qty = qty};
 }
 
-inline Event OrderReject(Id seq, Id id)  noexcept {
+inline Event OrderReject(Id seq, Id id) noexcept {
   return {.type = ORDER_REJECT, .seq = seq, .maker = id};
 }
 
-inline Event ModifyACK(Id seq, Id id, Side side, Price newPrice, Qty newQty)  noexcept {
+inline Event ModifyACK(Id seq, Id id, Side side, Price newPrice, Qty newQty) noexcept {
   return {.type = MODIFY_ACK, .side = side, .seq = seq, .maker = id, .price = newPrice, .qty = newQty};
 }
 
-inline Event ModifyReject(Id seq, Id id)  noexcept {
+inline Event ModifyReject(Id seq, Id id) noexcept {
   return {.type = MODIFY_REJECT, .seq = seq, .maker = id};
 }
 
-inline Event CancelACK(Id seq, Id id, Side side, Price price, Qty qty)  noexcept {
+inline Event CancelACK(Id seq, Id id, Side side, Price price, Qty qty) noexcept {
   return {.type = CANCEL_ACK, .side = side, .seq = seq, .maker = id, .price = price, .qty = qty};
 }
 
-inline Event CancelReject(Id seq, Id id)  noexcept {
+inline Event CancelReject(Id seq, Id id) noexcept {
   return {.type = CANCEL_REJECT, .seq = seq, .maker = id};
 }
 
-inline Event LevelCreate(Price price)  noexcept {
+inline Event LevelCreate(Price price) noexcept {
   return {.type = LEVEL_CREATE, .price = price};
 }
 
-inline Event LevelRemove(Price price)  noexcept {
+inline Event LevelRemove(Price price) noexcept {
   return {.type = LEVEL_REMOVE, .price = price};
 }
 
-std::string to_string(const Event& e)  noexcept {
+std::string to_string(const Event& e) noexcept {
   std::ostringstream oss;
 
   oss << "Event{"
@@ -100,12 +105,11 @@ std::string to_string(const Event& e)  noexcept {
       << "maker=" << e.maker << ", "
       << "taker=" << e.taker << ", "
       << "price=" << e.price << ", "
-      << "qty=" << e.qty
-      << "}";
-      
+      << "qty=" << e.qty << "}";
+
   return oss.str();
 }
 
-std::ostream& operator<<(std::ostream& os, const Event& e)  noexcept {
+std::ostream& operator<<(std::ostream& os, const Event& e) noexcept {
   return os << to_string(e);
 }

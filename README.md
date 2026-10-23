@@ -1,6 +1,10 @@
 
 # LC++ | C++ and Python Consulting for Financial Systems
 
+## Dependencies
+### Ubuntu
+sudo apt install -y libasio-dev # for asio client/server
+
 ## DEMO
 
 [![Build](https://github.com/lc-lukaszczerwinski/public/actions/workflows/build.yml/badge.svg)](https://github.com/lc-lukaszczerwinski/public/actions/workflows/build.yml)
@@ -72,6 +76,10 @@ Release :: 1000000 iters :: 35275694 iter/s :: 28.3 ns/iter :: 87.1 cyc/iter
 Release :: 1000000 iters :: 35388728 iter/s :: 28.3 ns/iter :: 86.8 cyc/iter
 Release :: 1000000 iters :: 35519978 iter/s :: 28.2 ns/iter :: 86.5 cyc/iter
 ```
+
+## asio client + asio server with a minimal FIX session
+
+![demo](./docs/images/demo.svg)
 
 ## 🏆Matching Engine Benchmark Award
 

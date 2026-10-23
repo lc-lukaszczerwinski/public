@@ -32,10 +32,14 @@ struct EventHandler {
     buffer.push(Trade(seq, maker, taker, price, qty));
   }
 
+  void onOrderTraded(Id clOrdId, Index slot, Side side, Price orderPrice, Price lastPrice, Qty lastQty, Qty cumQty, Qty leavesQty) {
+    // no FIX for unit tests
+  }
+
   Event pop() {
     Event event;
-    
-    while(buffer.pop(event) == false) {
+
+    while (buffer.pop(event) == false) {
       _mm_pause();
     }
 
@@ -46,7 +50,7 @@ struct EventHandler {
     Event event;
     std::size_t count = 0;
 
-    while(buffer.empty() == false) {
+    while (buffer.empty() == false) {
       count += 1;
       buffer.pop(event);
     }
@@ -57,7 +61,7 @@ struct EventHandler {
   std::size_t log(const std::string& prefix = "") {
     std::size_t count = 0;
 
-    while(buffer.empty() == false) {
+    while (buffer.empty() == false) {
       count += 1;
 
       Event event;
