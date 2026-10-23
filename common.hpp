@@ -55,6 +55,13 @@ typedef int8_t Side;
 constexpr Side Sell = -1;
 constexpr Side Buy = 1;
 
+/* 
+ * Time in force
+ */
+typedef int8_t TimeInForce;
+constexpr TimeInForce GTC = 1;
+constexpr TimeInForce IOC = 3;
+
 /*
  * Constants
  */
@@ -66,3 +73,17 @@ static constexpr Qty MinQty = 1;
 static constexpr Qty MaxQty = 64 * 1024 * 1024;
 
 constexpr unsigned int CacheLineSize = 64;
+
+/*
+ *
+ */
+
+template<typename T>
+T& ref(T& t) {
+  return t;
+}
+
+template<typename T>
+T& cref(T& t) {
+  return t;
+}

@@ -40,7 +40,11 @@ std::string to_string(const Command& command) {
     assert(false);
   }
 
-  os << "Command: seq=" << command.seq << " type=" << type << " id=" << command.order << " price=" << std::abs(command.price) << " qty=" << std::abs(command.qty);
+  os << "Command: seq=" << command.seq 
+     << " type=" << type 
+     << " id=" << command.order 
+     << " price=" << std::abs(command.price) 
+     << " qty=" << std::abs(command.qty);
 
   return os.str();
 }
