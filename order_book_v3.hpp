@@ -28,17 +28,19 @@ struct PriceLevel;
  */
 
 struct Order: IntrusiveListNode<Order> {
-  Order(Id id, Price prc, Qty qty, PriceLevel* lvl) noexcept
+  Order(Id id, Price prc, Qty leaves, Qty cum, PriceLevel* lvl) noexcept
     : id(id)
     , price(prc)
-    , qty(qty) 
+    , cumQty(cum)
+    , leavesQty(leaves)
     , level(lvl) //
   {
   }
 
-  Id id;
-  Price price;
-  Qty qty;
+  /* int64_t */ Id id;
+  /* int32_t */ Price price;
+  /* int32_t */ Qty cumQty;
+  /* int32_t */ Qty leavesQty;
   PriceLevel* level;
 };
 
@@ -46,7 +48,7 @@ struct Order: IntrusiveListNode<Order> {
  * PriceLevel
  */
 
-struct PriceLevel : IntrusiveTreapNode<PriceLevel> {
+struct PriceLevel: IntrusiveTreapNode<PriceLevel> {
 
 public: /* ctor, dtor */
 
@@ -94,22 +96,13 @@ public: /* api */
   void pop() noexcept {
     assert(_orders.empty() == false);
     assert(_orders.front().id == 0);
-    assert(_orders.front().qty == 0);
+    assert(_orders.front().leavesQty == 0);
+
     _orders.pop_front();
   }
 
   bool empty() const noexcept {
     return _orders.empty();
-  }
-
-  /* extension: slow */ Qty _ext_depth_at() const noexcept {
-    Qty qty = 0;
-
-    for(const Order* node = &_orders.front(); node != nullptr; node = node->_M_next) {
-      qty += node->qty;
-    }
-
-    return qty;
   }
 
   Price _get_key() const noexcept {
@@ -136,34 +129,6 @@ public: /* members */
 };
 
 /*
- * IEventHandler
- */
-
-struct IEventHandler {
-  void orderACK(Id seq, Id id, Side side, Price price, Qty qty) {
-  }
-
-  void orderRejected(Id seq, Id id) {
-    
-  }
-
-  void modifyACK(Id seq, Id id, Side side, Price newPrice, Qty newQty) {
-  }
-
-  void modifyReject(Id seq, Id id) {
-  }
-
-  void cancelACK(Id seq, Id id, Side side, Price price, Qty qty) {
-  }
-
-  void cancelReject(Id seq, Id id) {
-  }
-
-  void trade(Id seq, Id maker, Id taker, Price price, Qty qty) {
-  }
-};
-
-/*
  * OrderBook
  */
 
@@ -177,12 +142,12 @@ public: /* ctor, dtor */
   explicit OrderBook(TEventHandler& events, Price centerPrice = -1)
     : _events(events)
     , _sellLevels()
-    , _buyLevels()  //
+    , _buyLevels() //
   {
     /*center price not supported */ (void)centerPrice;
 
-    _orderSentinel = _orderPool.construct(/* id */ 0, /* price */ 0, /* qty */ 0, /* level */ nullptr);
-    
+    _orderSentinel = _orderPool.construct(/* id */ 0, /* price */ 0, /* leavesQty */ 0, /* cumQty */ 0, /* level */ nullptr);
+
     _sellLevels.insert(*_levelPool.construct(MaxPrice + 1));
     _buyLevels.insert(*_levelPool.construct(MinPrice - 1));
   }
@@ -191,14 +156,15 @@ public: /* ctor, dtor */
   OrderBook(const OrderBook&) = delete;
 
   ~OrderBook() noexcept {
-    while(_sellLevels.empty() == false) {
+    while (_sellLevels.empty() == false) {
       PriceLevel* const level = _sellLevels.front();
 
-      while(level->empty() == false) {
+      while (level->empty() == false) {
         Order& order = level->front();
-        order.id = 0;
-        order.qty = 0;
-        order.level = nullptr;
+        ((volatile Order&)(order)).id = 0;
+        ((volatile Order&)(order)).cumQty = 0;
+        ((volatile Order&)(order)).leavesQty = 0;
+        ((volatile Order&)(order)).level = nullptr;
         level->pop();
         _orderPool.destroy(&order);
       }
@@ -207,14 +173,15 @@ public: /* ctor, dtor */
       _levelPool.destroy(level);
     }
 
-    while(_buyLevels.empty() == false) {
+    while (_buyLevels.empty() == false) {
       PriceLevel* const level = _buyLevels.front();
 
-      while(level->empty() == false) {
+      while (level->empty() == false) {
         Order& order = level->front();
-        order.id = 0;
-        order.qty = 0;
-        order.level = nullptr;
+        ((volatile Order&)(order)).id = 0;
+        ((volatile Order&)(order)).cumQty = 0;
+        ((volatile Order&)(order)).leavesQty = 0;
+        ((volatile Order&)(order)).level = nullptr;
         level->pop();
         _orderPool.destroy(&order);
       }
@@ -246,117 +213,67 @@ public: /* api */
   }
 
   template<Side side>
-  Index insert_order(Id id, Price price, Qty qty, Id seq = -1) noexcept {
-    _events.orderACK(seq, id, side, price, qty);
+  Index insert_order(Id id, Price price, Qty qty) noexcept {
+    const Qty leavesQty = _trade<side>(id, price, qty);
 
-    qty = _trade<side>(id, price, qty, seq);
-
-    if(qty == 0) {
+    if (leavesQty == 0) {
       return -1;
     }
 
     PriceLevel* const level = _get_or_create_level<side>(price);
-    Order* const order = _orderPool.construct(id, price, qty, level);    
+    Order* const order = _orderPool.construct(id, price, leavesQty, qty - leavesQty, level);
     level->template push<side>(*order);
-    
-    return _orderPool.index_of(order);
+    const Index slot = _orderPool.index_of(order);
+
+    if (leavesQty == qty) {
+      _events.onOrderAccepted(id, slot, side, price, leavesQty);
+    }
+
+    return slot;
   }
 
   template<Side side>
-  void insert_mkt_order(Id id, Qty qty, Id seq = -1) noexcept {
-    insert_ioc_order<side>(id, (side == Sell) ? MinPrice : MaxPrice, qty, seq);
+  void insert_mkt_order(Id id, Qty qty) noexcept {
+    insert_ioc_order<side>(id, (side == Sell) ? MinPrice : MaxPrice, qty);
   }
 
   template<Side side>
-  void insert_ioc_order(Id id, Price price, Qty qty, Id seq = -1) noexcept {
-    _events.orderACK(seq, id, side, price, qty);
-    
-    qty = _trade<side>(id, price, qty, seq);
+  void insert_ioc_order(Id id, Price price, Qty qty) noexcept {
+    qty = _trade<side>(id, price, qty);
 
-    if(UNLIKELY(qty != 0)) {
-      _events.cancelACK(seq, id, side, price, qty);
+    if (UNLIKELY(qty != 0)) {
+      _events.onOrderCanceled(id, /* slot */ 0, side, price, qty);
     }
   }
 
   template<Side side>
-  Index update_order(Id id, Price oldPrice, Price newPrice, Qty newQty, Index slot, Id seq = -1) noexcept { 
-    {
-      if(UNLIKELY(slot == -1)) {
-        _events.modifyReject(seq, id);
-        return -1;
-      }
-
-      Order* const order = &_orderPool[slot];
-
-      if(UNLIKELY(order->id != id)) {
-        _events.modifyReject(seq, id);
-        return -1;
-      }
-
-      if(UNLIKELY(order->price != oldPrice)) {
-        _events.modifyReject(seq, id);
-        return -1;
-      }
-
-      PriceLevel* const level = order->level;
-      level->template cancel<side>(*order);
-
-      // dead-store elimination when Order has a trivial destructor
-      ((volatile Order*)(order))->id = 0;
-      ((volatile Order*)(order))->qty = 0;
-      ((volatile Order*)(order))->level = nullptr;
-      _orderPool.destroy(order);
-
-      if (level->empty()) {
-        _get_levels<side>().erase(*level);
-        _levelPool.destroy(level);
-      }
-    }
-
-    _events.modifyACK(seq, id, side, newPrice, newQty);
-
-    {
-      newQty = _trade<side>(id, newPrice, newQty, seq);
-
-      if(newQty == 0) {
-        return -1;
-      }
-
-      PriceLevel* const level = _get_or_create_level<side>(newPrice);
-      Order* const order = _orderPool.construct(id, newPrice, newQty, level);
-      level->template push<side>(*order);  
-      
-      return _orderPool.index_of(order);
-    }
-  }
-
-  template<Side side>
-  void cancel_order(Id id, Price price, Index slot, Id seq = -1) noexcept {
-    if(UNLIKELY(slot == -1)) {
-      _events.cancelReject(seq, id);
+  void cancel_order(Id id, Index slot, Price price) noexcept {
+    if (UNLIKELY(slot == -1)) {
+      _events.onCancelRejected(id, slot, side, price);
       return;
     }
 
     Order* const order = &_orderPool[slot];
 
-    if(UNLIKELY(order->id != id)) {
-      _events.cancelReject(seq, id);
+    if (UNLIKELY(order->id != id)) {
+      _events.onCancelRejected(id, slot, side, price);
       return;
     }
 
-    if(UNLIKELY(order->price != price)) {
-      _events.cancelReject(seq, id);
+    if (UNLIKELY(order->price != price)) {
+      _events.onCancelRejected(id, slot, side, price);
       return;
     }
 
     PriceLevel* const level = order->level;
     assert(level != nullptr);
     level->template cancel<side>(*order);
-    
-    const Qty qty = order->qty;
+    const Qty cumQty = order->cumQty;
+
     // dead-store elimination when Order has a trivial destructor
     ((volatile Order*)(order))->id = 0;
-    ((volatile Order*)(order))->qty = 0;
+    ((volatile Order*)(order))->cumQty = 0;
+    ((volatile Order*)(order))->leavesQty = 0;
     ((volatile Order*)(order))->level = nullptr;
     _orderPool.destroy(order);
 
@@ -365,18 +282,7 @@ public: /* api */
       _levelPool.destroy(level);
     }
 
-    _events.cancelACK(seq, id, side, price, qty);
-  }
-
-  template<Side side>
-  /* extension: slow */ Qty _ext_depth_at(Price price) noexcept {
-    PriceLevel* level = _get_levels<side>().find(price);
-    
-    if (UNLIKELY(level == nullptr)) {
-      return 0;
-    }
-
-    return level->_ext_depth_at();
+    _events.onOrderCanceled(id, slot, side, price, cumQty);
   }
 
 private: /* impl */
@@ -391,7 +297,7 @@ private: /* impl */
 
   template<Side side>
   auto& _get_levels() noexcept {
-    if constexpr(side == Sell) {
+    if constexpr (side == Sell) {
       return _sellLevels;
     } else {
       return _buyLevels;
@@ -401,50 +307,70 @@ private: /* impl */
   template<Side side>
   PriceLevel* _get_or_create_level(Price price) noexcept {
     PriceLevel* level = _get_levels<side>().find(price);
-   
+
     if (UNLIKELY(level == nullptr)) {
       level = _levelPool.construct(price);
       _get_levels<side>().insert(*level);
     }
-   
+
     return level;
   }
 
   template<Side side>
-  Qty _trade(Id id, Price priceLimit, Qty qty, Id seq) noexcept {
+  Qty _trade(Id id, Price price, Qty qty) noexcept {
     const auto check_price = [](Price price, Price priceLimit) noexcept -> bool {
-      if constexpr(side == Sell) {
+      if constexpr (side == Sell) {
         return price >= priceLimit;
       } else {
         return price <= priceLimit;
       }
     };
 
+    Qty cumQty = 0;
+    Qty leavesQty = qty;
     PriceLevel* level = _get_levels<-side>().front();
 
     do {
-      const Price price = level->price();
+      const Price lastPrice = level->price();
 
-      if(UNLIKELY(check_price(price, priceLimit) == false)) {
+      if (UNLIKELY(check_price(lastPrice, price) == false)) {
         break;
       }
 
       do {
         Order& order = level->front();
-        const Qty min = std::min(qty, order.qty);
+        const Qty lastQty = std::min(leavesQty, order.leavesQty);
 
-        qty -= min;
-        order.qty -= min;
-        _events.trade(seq, /* maker */ order.id, /* taker */ id, /* price */ price, /* qty */ min);
+        cumQty += lastQty;
+        leavesQty -= lastQty;
+        order.cumQty += lastQty;
+        order.leavesQty -= lastQty;
 
-        if(order.qty == 0) {
-          order.id = 0;
-          order.qty = 0;
-          order.level = nullptr;
+        _events.onTrade(
+            /*  taker */ id,
+            -1,
+            side,
+            price,
+            cumQty,
+            leavesQty,
+            /*  maker */ order.id,
+            -1,
+            -side,
+            order.price,
+            order.cumQty,
+            order.leavesQty,
+            /* common */ lastPrice,
+            lastQty);
+
+        if (order.leavesQty == 0) {
+          ((volatile Order&)(order)).id = 0;
+          ((volatile Order&)(order)).cumQty = 0;
+          ((volatile Order&)(order)).leavesQty = 0;
+          ((volatile Order&)(order)).level = nullptr;
           level->pop();
           _orderPool.destroy(&order);
 
-          if(UNLIKELY(level->empty())) {
+          if (UNLIKELY(level->empty())) {
             PriceLevel* const nextLevel = level->_next();
             _get_levels<-side>().erase(*level);
             _levelPool.destroy(level);
@@ -453,10 +379,10 @@ private: /* impl */
             break;
           }
         }
-      } while(qty != 0);
-    } while(qty != 0);
+      } while (leavesQty != 0);
+    } while (leavesQty != 0);
 
-    return qty;
+    return leavesQty;
   }
 
 private: /* members */
@@ -464,7 +390,7 @@ private: /* members */
   TEventHandler& _events;
 
   Order* _orderSentinel{nullptr};
-  ObjectFixedPool<Order> _orderPool{32 * 32 * 1024}; 
+  ObjectFixedPool<Order> _orderPool{32 * 32 * 1024};
   ObjectFixedPool<PriceLevel> _levelPool{32 * 1024};
 
   IntrusiveCTreap<PriceLevel, std::less<Price>> _sellLevels;

@@ -17,7 +17,6 @@
 #include "random.hpp"
 #include "timer.hpp"
 
-
 class CommandGenerator {
 public: /* ctor, dtor */
 
@@ -25,13 +24,12 @@ public: /* ctor, dtor */
 
 public: /* api */
 
-  std::vector<Command> generate(
-      Price startPrice,
-      Price endPrice,
-      int32_t iters,
-      double probMarket,
-      double probCancel,
-      double probBuy = 0.5) //
+  std::vector<Command> generate(Price startPrice,
+                                Price endPrice,
+                                int32_t iters,
+                                double probMarket,
+                                double probCancel,
+                                double probBuy = 0.5) //
   {
     std::set<int32_t> activeIds;
     std::vector<Command> out(iters);
@@ -47,7 +45,7 @@ public: /* api */
     const double step = (iters > 0) ? (1.0 * (endPrice - startPrice) / iters) : 0.0;
     const double scale = 1.0;
 
-    for(int32_t i = 0; i < iters; i++) {
+    for (int32_t i = 0; i < iters; i++) {
       auto& e = out[i];
       e.seq = i;
       const double u = _uni01(_rng);
@@ -55,11 +53,11 @@ public: /* api */
       const bool isCancel = (u < probCancel) && ! activeIds.empty();
       const bool isMarket = ! isCancel && (u < probCancel + probMarket);
 
-      if(isCancel) {
+      if (isCancel) {
         const int32_t probeId = 1 + int32_t(_uni01(_rng) * (nextId - 1));
         auto it = activeIds.lower_bound(probeId);
 
-        if(it == activeIds.end()) {
+        if (it == activeIds.end()) {
           it = activeIds.begin();
         }
 
@@ -70,19 +68,19 @@ public: /* api */
         activeIds.erase(it);
         idPrice.erase(e.order);
         idSide.erase(e.order);
-      } else if(isMarket) {
+      } else if (isMarket) {
         e.order = nextId++;
         e.price = 0;
         e.qty = 1 + int32_t(_uni01(_rng) * 10);
 
-        if(_uni01(_rng) > probBuy) {
+        if (_uni01(_rng) > probBuy) {
           e.qty = -e.qty;
         }
       } else /* Limit Order */ {
         e.order = nextId++;
         e.qty = 1 + int32_t(_uni01(_rng) * 10);
 
-        if(_uni01(_rng) > probBuy) {
+        if (_uni01(_rng) > probBuy) {
           e.qty = -e.qty;
         }
 
@@ -109,96 +107,157 @@ private: /* members */
   std::uniform_real_distribution<double> _uniSigned{-0.5, 0.5};
 };
 
-template<typename OBook, Side side>
+template<typename OBook, Side makerSide>
 void test_insert(Price price) {
   typename OBook::EventHandler eh;
   OBook oBook(eh, price);
 
-  oBook.template insert_order<side>(1, price, 100);
+  oBook.template insert_order<makerSide>(1, price, 100);
   Event event = oBook.eh().pop();
   assert(event.type == ORDER_ACK);
-  assert(event.maker == 1);
-  assert(event.side == side);
-  assert(event.price == price);
-  assert(event.qty == 100);
+  assert(event.makerId == 1);
+  assert(event.makerSide == makerSide);
+  assert(event.makerPrice == price);
+  assert(event.makerLeavesQty == 100);
 
-  oBook.template insert_order<side>(2, price, 100);
+  oBook.template insert_order<makerSide>(2, price, 100);
   event = oBook.eh().pop();
   assert(event.type == ORDER_ACK);
-  assert(event.maker == 2);
-  assert(event.side == side);
-  assert(event.price == price);
-  assert(event.qty == 100);
+  assert(event.makerId == 2);
+  assert(event.makerSide == makerSide);
+  assert(event.makerPrice == price);
+  assert(event.makerLeavesQty == 100);
 }
 
-template<typename OBook, Side side>
+template<typename OBook, Side makerSide>
 void test_delete(Price price) {
   typename OBook::EventHandler eh;
   OBook oBook(eh, price);
 
-  const Index slot = oBook.template insert_order<side>(1, price, 100);
+  const Index slot = oBook.template insert_order<makerSide>(1, price, 100);
   Event event = oBook.eh().pop();
   assert(event.type == ORDER_ACK);
-  assert(event.maker == 1);
+  assert(event.makerId == 1);
 
-  oBook.template cancel_order<side>(1, price, slot);
+  oBook.template cancel_order<makerSide>(1, slot, price);
   event = oBook.eh().pop();
-  assert(event.type == CANCEL_ACK);
-  assert(event.maker == 1);
+  assert(event.type == ORDER_CANCELED);
+  assert(event.makerId == 1);
 }
 
-template<typename OBook, Side side>
+template<typename OBook, Side makerSide>
 void test_double_delete(Price price) {
   typename OBook::EventHandler eh;
   OBook oBook(eh, price);
 
-  const Index slot = oBook.template insert_order<side>(1, price, 100);
+  const Index slot = oBook.template insert_order<makerSide>(1, price, 100);
   Event event = oBook.eh().pop();
   assert(event.type == ORDER_ACK);
-  assert(event.maker == 1);
+  assert(event.makerId == 1);
 
-  oBook.template cancel_order<side>(1, price, slot);
+  oBook.template cancel_order<makerSide>(1, slot, price);
   event = oBook.eh().pop();
-  assert(event.type == CANCEL_ACK);
-  assert(event.maker == 1);
+  assert(event.type == ORDER_CANCELED);
+  assert(event.makerId == 1);
 
-  oBook.template cancel_order<side>(1, price, slot);
+  oBook.template cancel_order<makerSide>(1, slot, price);
   event = oBook.eh().pop();
-  assert(event.type == CANCEL_REJECT);
-  assert(event.maker == 1);
+  assert(event.type == CANCEL_REJECTED);
+  assert(event.makerId == 1);
 }
 
-template<typename OBook, Side side>
+template<typename OBook, Side makerSide>
+void test_trade_across_levels(Price centerPrice) {
+  typename OBook::EventHandler eh;
+  OBook oBook(eh, centerPrice);
+
+  const Price firstPrice = centerPrice - makerSide;
+  const Price secondPrice = centerPrice - 2 * makerSide;
+  const Price takerPrice = centerPrice - 3 * makerSide;
+
+  oBook.template insert_order<makerSide>(1, firstPrice, 20);
+  Event event = oBook.eh().pop();
+  assert(event.type == ORDER_ACK);
+
+  oBook.template insert_order<makerSide>(2, secondPrice, 30);
+  event = oBook.eh().pop();
+  assert(event.type == ORDER_ACK);
+
+  const Index slot = oBook.template insert_order<-makerSide>(3, takerPrice, 35);
+  assert(slot == -1);
+
+  event = oBook.eh().pop();
+  assert(event.type == TRADE);
+  assert(event.takerId == 3);
+  assert(event.takerSide == -makerSide);
+  assert(event.takerPrice == takerPrice);
+  assert(event.takerCumQty == 20);
+  assert(event.takerLeavesQty == 15);
+  assert(event.makerId == 1);
+  assert(event.makerPrice == firstPrice);
+  assert(event.makerCumQty == 20);
+  assert(event.makerLeavesQty == 0);
+  assert(event.lastPrice == firstPrice);
+  assert(event.lastQty == 20);
+
+  event = oBook.eh().pop();
+  assert(event.type == TRADE);
+  assert(event.takerCumQty == 35);
+  assert(event.takerLeavesQty == 0);
+  assert(event.makerId == 2);
+  assert(event.makerPrice == secondPrice);
+  assert(event.makerCumQty == 15);
+  assert(event.makerLeavesQty == 15);
+  assert(event.lastPrice == secondPrice);
+  assert(event.lastQty == 15);
+}
+
+template<typename OBook, Side makerSide>
+void test_cancel_after_partial_trade(Price price) {
+  typename OBook::EventHandler eh;
+  OBook oBook(eh, price);
+
+  const Index slot = oBook.template insert_order<makerSide>(1, price, 100);
+  Event event = oBook.eh().pop();
+  assert(event.type == ORDER_ACK);
+
+  const Index takerSlot = oBook.template insert_order<-makerSide>(2, price, 25);
+  assert(takerSlot == -1);
+  event = oBook.eh().pop();
+  assert(event.type == TRADE);
+  assert(event.makerCumQty == 25);
+  assert(event.makerLeavesQty == 75);
+
+  oBook.template cancel_order<makerSide>(1, slot, price);
+  event = oBook.eh().pop();
+  assert(event.type == ORDER_CANCELED);
+  assert(event.makerCumQty == 25);
+}
+
+template<typename OBook, Side makerSide>
 void test_trade(Price price) {
   typename OBook::EventHandler eh;
   OBook oBook(eh, price);
   Event event;
 
-  oBook.template insert_order<side>(1, price, 100);
+  oBook.template insert_order<makerSide>(1, price, 100);
   event = oBook.eh().pop();
   assert(event.type == ORDER_ACK);
-  assert(event.maker == 1);
-  assert(event.side == side);
-  assert(event.price == price);
-  assert(event.qty == 100);
+  assert(event.makerId == 1);
+  assert(event.makerSide == makerSide);
+  assert(event.makerPrice == price);
+  assert(event.makerLeavesQty == 100);
 
-  oBook.template insert_order<-side>(2, price, 100);
-  event = oBook.eh().pop();
-  assert(event.type == ORDER_ACK);
-  assert(event.maker == 2);
-  assert(event.side == -side);
-  assert(event.price == price);
-  assert(event.qty == 100);
-
+  oBook.template insert_order<-makerSide>(2, price, 100);
   event = oBook.eh().pop();
   assert(event.type == TRADE);
-  assert(event.maker == 1);
-  assert(event.taker == 2);
-  assert(event.price == price);
-  assert(event.qty == 100);
+  assert(event.makerId == 1);
+  assert(event.takerId == 2);
+  assert(event.lastPrice == price);
+  assert(event.lastQty == 100);
 }
 
-template<typename OBook, Side side>
+template<typename OBook, Side makerSide>
 void test_trade_level(Price price, Price tradePrice) {
   typename OBook::EventHandler eh;
   OBook oBook(eh, price);
@@ -206,33 +265,30 @@ void test_trade_level(Price price, Price tradePrice) {
   const Qty qty = 100;
   const Index orders = 8;
 
-  for(Index order = 1; order <= orders; order++) {
-    oBook.template insert_order<side>(order, tradePrice, qty);
+  for (Index order = 1; order <= orders; order++) {
+    oBook.template insert_order<makerSide>(order, tradePrice, qty);
     Event event = oBook.eh().pop();
     assert(event.type == ORDER_ACK);
-    assert(event.maker == order);
+    assert(event.makerId == order);
   }
 
-  oBook.template insert_order<-side>(orders + 1, tradePrice, orders * qty);
-  Event event = oBook.eh().pop();
-  assert(event.type == ORDER_ACK);
-  assert(event.maker == orders + 1);
+  oBook.template insert_order<-makerSide>(orders + 1, tradePrice, orders * qty);
 
-  for(Index i = 1; i <= 8; i++) {
+  for (Index i = 1; i <= 8; i++) {
     Event event = oBook.eh().pop();
     assert(event.type == TRADE);
-    assert(event.maker == i);
-    assert(event.taker == orders + 1);
+    assert(event.makerId == i);
+    assert(event.takerId == orders + 1);
   }
 }
 
-template<typename OBook, Side side>
+template<typename OBook, Side makerSide>
 void test_trade_level(Price price) {
   typename OBook::EventHandler eh;
   OBook oBook(eh, price);
 
-  for(int32_t price = 1; price <= 128; price++) {
-    test_trade_level<OBook, side>(price, price);
+  for (int32_t price = 1; price <= 128; price++) {
+    test_trade_level<OBook, makerSide>(price, price);
   }
 }
 
@@ -253,7 +309,7 @@ void test_trend(int32_t price, int32_t trend = 1) {
     return price;
   };
 
-  for(int32_t iter = 0; iter != 3 * (maxPrice - minPrice); iter += 1, price = update_price(price, trend)) {
+  for (int32_t iter = 0; iter != 3 * (maxPrice - minPrice); iter += 1, price = update_price(price, trend)) {
     oBook.template insert_order<Sell>(1000000 + price, price, 100);
     oBook.eh().clear();
 
@@ -270,7 +326,7 @@ void benchmark(int32_t iters) {
   struct Benchmark {
     Benchmark(OBook& oBook, int32_t iters)
       : _iters(iters)
-      , _engine(oBook)  //
+      , _engine(oBook) //
     {
     }
 
@@ -295,24 +351,24 @@ void benchmark(int32_t iters) {
 
     void run() {
 
-      for(const auto& e : _requests) {
-        if(e.qty > 0) {
-          if(e.price == 0) {
+      for (const auto& e : _requests) {
+        if (e.qty > 0) {
+          if (e.price == 0) {
             _engine.template insert_mkt_order<Buy>(e.order, e.qty);
           } else {
             _slots[e.order] = _engine.template insert_order<Buy>(e.order, e.price, e.qty);
           }
-        } else if(e.qty < 0) {
-          if(e.price == 0) {
+        } else if (e.qty < 0) {
+          if (e.price == 0) {
             _engine.template insert_mkt_order<Sell>(e.order, -e.qty);
           } else {
             _slots[e.order] = _engine.template insert_order<Sell>(e.order, e.price, -e.qty);
           }
         } else {
-          if((e.price > 0) && (_slots[e.order] != -1)) {
-            _engine.template cancel_order<Buy>(e.order, e.price, _slots[e.order]);
-          } else if((e.price < 0) && (_slots[e.order] != -1)) {
-            _engine.template cancel_order<Sell>(e.order, -e.price, _slots[e.order]);
+          if ((e.price > 0) && (_slots[e.order] != -1)) {
+            _engine.template cancel_order<Buy>(e.order, _slots[e.order], e.price);
+          } else if ((e.price < 0) && (_slots[e.order] != -1)) {
+            _engine.template cancel_order<Sell>(e.order, _slots[e.order], -e.price);
           }
         }
 
@@ -330,15 +386,14 @@ void benchmark(int32_t iters) {
   } bench(oBook, iters);
 
   Timer<1>(bench).log([iters](long int ns, long int cyc) {
-    const std::string& log = std::format(
-        "{} :: {} iters :: {} iter/s :: "
-        "{:.1f} ns/iter :: "
-        "{:.1f} cyc/iter\n",
-        PROFILE,
-        iters,
-        (int)(1e9 * iters / ns),
-        (1.0 * ns / iters),
-        (1.0 * cyc / iters));
+    const std::string& log = std::format("{} :: {} iters :: {} iter/s :: "
+                                         "{:.1f} ns/iter :: "
+                                         "{:.1f} cyc/iter\n",
+                                         PROFILE,
+                                         iters,
+                                         (int)(1e9 * iters / ns),
+                                         (1.0 * ns / iters),
+                                         (1.0 * cyc / iters));
 
     std::cout << log << std::flush;
   });

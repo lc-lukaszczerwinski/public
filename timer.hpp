@@ -67,7 +67,7 @@ struct _Timer {
           * Warm up
           */
 
-      for(int i = 1; i < Iters; ++i) {
+      for (int i = 1; i < Iters; ++i) {
         f.setup();
         f.run();
         f.teardown();
@@ -78,8 +78,8 @@ struct _Timer {
     long int bestNs = std::numeric_limits<long int>::max();
     uint64_t bestCycles = std::numeric_limits<uint64_t>::max();
 
-    for(int i = 0; i < Iters; ++i) {
-      for(int j = 0; j < Iters; ++j) {
+    for (int i = 0; i < Iters; ++i) {
+      for (int j = 0; j < Iters; ++j) {
         f.setup();
 
         const auto startTime = std::chrono::high_resolution_clock::now();
@@ -97,7 +97,7 @@ struct _Timer {
         const long int runNs = std::chrono::duration_cast<std::chrono::nanoseconds>(endTime - startTime).count();
         const uint64_t runCycles = endCycles - startCycles;
 
-        if(runNs < bestNs) {
+        if (runNs < bestNs) {
           bestNs = runNs;
           bestCycles = runCycles;
         }

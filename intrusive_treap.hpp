@@ -64,10 +64,10 @@ struct IntrusiveTreapNode {
   }
 
   TType* _prev() noexcept {
-    if(this->_M_left != nullptr) {
+    if (this->_M_left != nullptr) {
       IntrusiveTreapNode* current = this->_M_left;
 
-      while(current->_M_right != nullptr) {
+      while (current->_M_right != nullptr) {
         current = current->_M_right;
       }
 
@@ -77,7 +77,7 @@ struct IntrusiveTreapNode {
     IntrusiveTreapNode* current = this;
     IntrusiveTreapNode* parent = current->_M_parent;
 
-    while(parent != nullptr && parent->_M_left == current) {
+    while (parent != nullptr && parent->_M_left == current) {
       current = parent;
       parent = parent->_M_parent;
     }
@@ -86,10 +86,10 @@ struct IntrusiveTreapNode {
   }
 
   TType* _next() noexcept {
-    if(this->_M_right != nullptr) {
+    if (this->_M_right != nullptr) {
       IntrusiveTreapNode* current = this->_M_right;
 
-      while(current->_M_left != nullptr) {
+      while (current->_M_left != nullptr) {
         current = current->_M_left;
       }
 
@@ -99,7 +99,7 @@ struct IntrusiveTreapNode {
     IntrusiveTreapNode* current = this;
     IntrusiveTreapNode* parent = current->_M_parent;
 
-    while(parent != nullptr && parent->_M_right == current) {
+    while (parent != nullptr && parent->_M_right == current) {
       current = parent;
       parent = parent->_M_parent;
     }
@@ -141,12 +141,12 @@ public: /* api */
     TNode* current = _root;
     parent = nullptr;
 
-    while(current != nullptr) {
+    while (current != nullptr) {
       parent = current;
 
-      if(Cmp()(key, current->_get_key())) {
+      if (Cmp()(key, current->_get_key())) {
         current = current->_M_left;
-      } else if(Cmp()(current->_get_key(), key)) {
+      } else if (Cmp()(current->_get_key(), key)) {
         current = current->_M_right;
       } else {
         return current;
@@ -169,9 +169,9 @@ public: /* api */
 
     node._M_parent = parent;
 
-    if(UNLIKELY(parent == nullptr)) {
+    if (UNLIKELY(parent == nullptr)) {
       _root = &node;
-    } else if(Cmp()(node._get_key(), parent->_get_key())) {
+    } else if (Cmp()(node._get_key(), parent->_get_key())) {
       assert(parent->_M_left == nullptr);
       parent->_M_left = &node;
     } else {
@@ -186,7 +186,7 @@ public: /* api */
     TNode* parent;
     TNode* const found = find(node._get_key(), parent);
 
-    if(UNLIKELY(found != nullptr)) {
+    if (UNLIKELY(found != nullptr)) {
       return false;
     }
 
@@ -195,13 +195,13 @@ public: /* api */
   }
 
   void erase(TNode& node) noexcept {
-    while(node._M_left != nullptr || node._M_right != nullptr) {
-      if(node._M_left == nullptr) {
+    while (node._M_left != nullptr || node._M_right != nullptr) {
+      if (node._M_left == nullptr) {
         _rotate_left(&node);
-      } else if(node._M_right == nullptr) {
+      } else if (node._M_right == nullptr) {
         _rotate_right(&node);
       } else {
-        if(node._M_left->_get_priority() > node._M_right->_get_priority()) {
+        if (node._M_left->_get_priority() > node._M_right->_get_priority()) {
           _rotate_right(&node);
         } else {
           _rotate_left(&node);
@@ -211,9 +211,9 @@ public: /* api */
 
     TNode* const parent = node._M_parent;
 
-    if(UNLIKELY(parent == nullptr)) {
+    if (UNLIKELY(parent == nullptr)) {
       _root = nullptr;
-    } else if(parent->_M_left == &node) {
+    } else if (parent->_M_left == &node) {
       parent->_M_left = nullptr;
     } else {
       parent->_M_right = nullptr;
@@ -227,11 +227,11 @@ public: /* api */
   TNode* front() noexcept {
     TNode* const node = _root;
 
-    if(node == nullptr) {
+    if (node == nullptr) {
       return nullptr;
     }
 
-    while(node->_M_left != nullptr) {
+    while (node->_M_left != nullptr) {
       node = node->_M_left;
     }
 
@@ -245,11 +245,11 @@ public: /* api */
   TNode* back() noexcept {
     TNode* const node = _root;
 
-    if(node == nullptr) {
+    if (node == nullptr) {
       return nullptr;
     }
 
-    while(node->_M_right != nullptr) {
+    while (node->_M_right != nullptr) {
       node = node->_M_right;
     }
 
@@ -273,7 +273,7 @@ private: /* rotations */
     TNode* const parent = node->_M_parent;
     node->_M_right = right->_M_left;
 
-    if(right->_M_left != nullptr) {
+    if (right->_M_left != nullptr) {
       right->_M_left->_M_parent = node;
     }
 
@@ -281,9 +281,9 @@ private: /* rotations */
     node->_M_parent = right;
     right->_M_parent = parent;
 
-    if(UNLIKELY(parent == nullptr)) {
+    if (UNLIKELY(parent == nullptr)) {
       _root = right;
-    } else if(parent->_M_left == node) {
+    } else if (parent->_M_left == node) {
       parent->_M_left = right;
     } else {
       parent->_M_right = right;
@@ -297,7 +297,7 @@ private: /* rotations */
     TNode* const parent = node->_M_parent;
     node->_M_left = left->_M_right;
 
-    if(left->_M_right != nullptr) {
+    if (left->_M_right != nullptr) {
       left->_M_right->_M_parent = node;
     }
 
@@ -305,9 +305,9 @@ private: /* rotations */
     node->_M_parent = left;
     left->_M_parent = parent;
 
-    if(UNLIKELY(parent == nullptr)) {
+    if (UNLIKELY(parent == nullptr)) {
       _root = left;
-    } else if(parent->_M_left == node) {
+    } else if (parent->_M_left == node) {
       parent->_M_left = left;
     } else {
       parent->_M_right = left;
@@ -317,12 +317,12 @@ private: /* rotations */
 private: /* heap fix-up */
 
   void _bubble_up(TNode* node) noexcept {
-    while((node->_M_parent != nullptr) &&                            //
-          (node->_get_priority() > node->_M_parent->_get_priority()) //
+    while ((node->_M_parent != nullptr) &&                            //
+           (node->_get_priority() > node->_M_parent->_get_priority()) //
     ) {
       TNode* parent = node->_M_parent;
 
-      if(parent->_M_left == node) {
+      if (parent->_M_left == node) {
         _rotate_right(parent);
       } else {
         _rotate_left(parent);
@@ -415,27 +415,27 @@ public: /* api */
 private: /* extension */
 
   void _cache_update_on_insert(TNode* node) noexcept {
-    if(UNLIKELY(_cache_front == nullptr)) {
+    if (UNLIKELY(_cache_front == nullptr)) {
       _cache_front = node;
       _cache_back = node;
       return;
     }
 
-    if(UNLIKELY(Cmp()(node->_get_key(), _cache_front->_get_key()))) {
+    if (UNLIKELY(Cmp()(node->_get_key(), _cache_front->_get_key()))) {
       _cache_front = node;
     }
 
-    if(UNLIKELY(Cmp()(_cache_back->_get_key(), node->_get_key()))) {
+    if (UNLIKELY(Cmp()(_cache_back->_get_key(), node->_get_key()))) {
       _cache_back = node;
     }
   }
 
   void _cache_update_on_erase(TNode* node) noexcept {
-    if(UNLIKELY(node == _cache_front)) {
+    if (UNLIKELY(node == _cache_front)) {
       _cache_front = node->_next();
     }
 
-    if(UNLIKELY(node == _cache_back)) {
+    if (UNLIKELY(node == _cache_back)) {
       _cache_back = node->_prev();
     }
   }

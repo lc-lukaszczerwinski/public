@@ -28,7 +28,7 @@ public: /* ctor, dtor */
     _buffer = (Byte*)(::operator new[](capacity * sizeof(TType), std::align_val_t{alignof(TType)}));
     _free = (TType**)(::operator new[](capacity * sizeof(TType*)));
 
-    for(uint32_t i = 0; i < capacity; ++i) {
+    for (uint32_t i = 0; i < capacity; ++i) {
       _free[i] = (TType*)(_buffer + i * sizeof(TType));
     }
   }
@@ -59,7 +59,7 @@ public: /* api */
 
   template<typename... Args>
   TType* construct(Args&&... args) noexcept {
-    return ::new((void*)(allocate())) TType(std::forward<Args>(args)...);
+    return ::new ((void*)(allocate())) TType(std::forward<Args>(args)...);
   }
 
   void destroy(TType* ptr) noexcept {
@@ -120,7 +120,7 @@ class ObjectPool {
 public: /* ctor, dtor */
 
   ObjectPool() noexcept {
-    if(_allocateChunk() == false) {
+    if (_allocateChunk() == false) {
       std::terminate();
     }
   }
@@ -128,7 +128,7 @@ public: /* ctor, dtor */
   ~ObjectPool() noexcept {
     Chunk* chunk = _chunks;
 
-    while(chunk != nullptr) {
+    while (chunk != nullptr) {
       Chunk* next = chunk->next;
       ::operator delete(chunk, std::align_val_t{alignof(Chunk)});
       chunk = next;
@@ -144,8 +144,8 @@ public: /* ctor, dtor */
 public: /* api */
 
   TType* allocate() noexcept {
-    if(_free == nullptr) {
-      if(_allocateChunk() == false) {
+    if (_free == nullptr) {
+      if (_allocateChunk() == false) {
         return nullptr;
       }
     }
@@ -157,7 +157,7 @@ public: /* api */
   }
 
   void deallocate(TType* object) noexcept {
-    if(object == nullptr) {
+    if (object == nullptr) {
       return;
     }
 
@@ -171,7 +171,7 @@ public: /* api */
     const TType* ptr = allocate();
 
     if (ptr != nullptr) {
-      return ::new((void*)ptr) TType(std::forward<Args>(args)...);
+      return ::new ((void*)ptr) TType(std::forward<Args>(args)...);
     } else {
       return nullptr;
     }
@@ -198,18 +198,18 @@ private: /* types */
 private: /* methods */
 
   bool _allocateChunk() noexcept {
-    Chunk* const chunk = (Chunk*)(::operator new(sizeof(Chunk),  //
-                                                 std::align_val_t{alignof(Chunk)}, 
+    Chunk* const chunk = (Chunk*)(::operator new(sizeof(Chunk), //
+                                                 std::align_val_t{alignof(Chunk)},
                                                  std::nothrow));
 
-    if(chunk == nullptr) {
+    if (chunk == nullptr) {
       return false;
     }
 
     chunk->next = _chunks;
     _chunks = chunk;
 
-    for(uint32_t i = 0; i < ChunkSize; ++i) {
+    for (uint32_t i = 0; i < ChunkSize; ++i) {
       chunk->slots[i].next = _free;
       _free = &chunk->slots[i];
     }

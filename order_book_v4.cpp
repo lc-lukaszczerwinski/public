@@ -7,71 +7,6 @@
 #include "test_utils.hpp"
 #include "timer.hpp"
 
-struct EventHandler {
-  void orderACK(Id seq, Id id, Side side, Price price, Qty qty) {
-    buffer.push(OrderACK(seq, id, side, price, qty));
-  }
-
-  void modifyACK(Id seq, Id id, Side side, Price newPrice, Qty newQty) {
-    buffer.push(ModifyACK(seq, id, side, newPrice, newQty));
-  }
-
-  void modifyReject(Id seq, Id id) {
-    buffer.push(ModifyReject(seq, id));
-  }
-
-  void cancelACK(Id seq, Id id, Side side, Price price, Qty qty) {
-    buffer.push(CancelACK(seq, id, side, price, qty));
-  }
-
-  void cancelReject(Id seq, Id id) {
-    buffer.push(CancelReject(seq, id));
-  }
-
-  void trade(Id seq, Id maker, Id taker, Price price, Qty qty) {
-    buffer.push(Trade(seq, maker, taker, price, qty));
-  }
-
-  Event pop() {
-    Event event;
-    
-    while(buffer.pop(event) == false) {
-      _mm_pause();
-    }
-
-    return event;
-  }
-
-  std::size_t clear() noexcept {
-    Event event;
-    std::size_t count = 0;
-
-    while(buffer.empty() == false) {
-      count += 1;
-      buffer.pop(event);
-    }
-
-    return count;
-  }
-
-  std::size_t log(const std::string& prefix = "") {
-    std::size_t count = 0;
-
-    while(buffer.empty() == false) {
-      count += 1;
-
-      Event event;
-      buffer.pop(event);
-
-      std::cout << prefix << event << std::endl;
-    }
-
-    return count;
-  }
-
-  RingBuffer<Event, 128> buffer;
-};
-
 using OrderBookV4 = v4::OrderBook<EventHandler>;
 
 template<typename OBook>
@@ -87,6 +22,12 @@ void test_v4(int32_t price) {
 
   test_trade<OBook, Sell>(price);
   test_trade<OBook, Buy>(price);
+
+  test_trade_across_levels<OBook, Sell>(price);
+  test_trade_across_levels<OBook, Buy>(price);
+
+  test_cancel_after_partial_trade<OBook, Sell>(price);
+  test_cancel_after_partial_trade<OBook, Buy>(price);
 
   test_trade_level<OBook, Sell>(price);
   test_trade_level<OBook, Buy>(price);

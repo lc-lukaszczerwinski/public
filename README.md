@@ -1,6 +1,10 @@
 
 # LC++ | C++ and Python Consulting for Financial Systems
 
+## Dependencies
+### Ubuntu
+sudo apt install -y libasio-dev # for asio client/server
+
 ## DEMO
 
 [![Build](https://github.com/lc-lukaszczerwinski/public/actions/workflows/build.yml/badge.svg)](https://github.com/lc-lukaszczerwinski/public/actions/workflows/build.yml)
@@ -72,6 +76,33 @@ Release :: 1000000 iters :: 35275694 iter/s :: 28.3 ns/iter :: 87.1 cyc/iter
 Release :: 1000000 iters :: 35388728 iter/s :: 28.3 ns/iter :: 86.8 cyc/iter
 Release :: 1000000 iters :: 35519978 iter/s :: 28.2 ns/iter :: 86.5 cyc/iter
 ```
+
+## asio client + asio server with a minimal FIX/OUCH session
+
+`client_fix` / `server_fix` and `client_ouch` / `server_ouch` are two protocol front ends for the same UDP-based demonstration. Each client provides an interactive CLI for limit, IOC, market and cancel orders. The matching-engine server receives commands on `localhost:9000`, processes them with `OrderBook v4`, and sends acceptance, trade, cancellation and cancel-rejection events back to the client.
+
+![demo](./docs/images/demo.svg)
+
+Both protocol pairs use one message per UDP datagram. The server runs separate receive, execution and transmit threads connected by SPSC queues, so wire-protocol encoding remains independent from matching.
+
+In either client, type `help` or `h` to display the available commands and their arguments.
+
+## FIX protocol demo
+
+`client_fix` and `server_fix` exchange a minimal, educational FIX text profile using `tag=value|` fields:
+
+- `NewOrderSingle (35=D)` for limit, IOC and market orders.
+- `OrderCancelRequest (35=F)` for cancellations.
+- `ExecutionReport (35=8)` for accepted, partially filled, filled and canceled orders.
+- `OrderCancelReject (35=9)` for rejected cancellations.
+
+The profile includes `MsgSeqNum (34)`. The FIX server buffers out-of-order commands, discards duplicates, and releases commands to the matching engine in sequence. The client automatically increments the number, while `# <msgSeqNum>` before a command can be used to test gaps, duplicates or resequencing.
+
+This is not a complete FIX session layer: logon/logout, heartbeat, checksums and `BodyLength` handling are intentionally omitted.
+
+## OUCH protocol demo
+
+`client_ouch` and `server_ouch` use the same transport, CLI and order book as the FIX demo, but exchange binary messages inspired by OUCH 4.2. This educational profile uses one OUCH message per UDP datagram, 14-byte numeric order tokens, text-length fields and big-endian integers. Sequence numbers and SoupBinTCP session management are intentionally omitted.
 
 ## 🏆Matching Engine Benchmark Award
 

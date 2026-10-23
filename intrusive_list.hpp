@@ -24,17 +24,20 @@ struct IntrusiveListNode {
   IntrusiveListNode() noexcept
     : _M_prev(nullptr)
     , _M_next(nullptr) //
-  {}
+  {
+  }
 
   IntrusiveListNode(const IntrusiveListNode&) noexcept
     : _M_prev(nullptr)
     , _M_next(nullptr) //
-  {}
+  {
+  }
 
   IntrusiveListNode(IntrusiveListNode&&) noexcept
     : _M_prev(nullptr)
     , _M_next(nullptr) //
-  {}
+  {
+  }
 
   IntrusiveListNode& operator=(const IntrusiveListNode&) noexcept {
     _M_prev = nullptr;
@@ -62,8 +65,7 @@ public: /* ctod, dtor */
 
   IntrusiveList() noexcept
     : _head(nullptr)
-    , _tail(nullptr)
-  {
+    , _tail(nullptr) {
   }
 
   IntrusiveList(IntrusiveList&&) = delete;
@@ -85,12 +87,12 @@ public: /* api */
     node._M_prev = nullptr;
     node._M_next = next;
 
-    if(next != nullptr) {
+    if (next != nullptr) {
       next->_M_prev = &node;
     } else {
       _tail = &node;
     }
-   
+
     _head = &node;
   }
 
@@ -101,7 +103,7 @@ public: /* api */
     node._M_prev = prev;
     node._M_next = nullptr;
 
-    if(prev != nullptr) {
+    if (prev != nullptr) {
       prev->_M_next = &node;
     } else {
       _head = &node;
@@ -115,13 +117,13 @@ public: /* api */
 
     TNode* node = _head;
     TNode* next = _head->_M_next;
-   
-    if(next != nullptr) {
+
+    if (next != nullptr) {
       next->_M_prev = nullptr;
     } else {
       _tail = nullptr;
     }
-   
+
     _head = next;
 
     node->_M_prev = nullptr;
@@ -134,7 +136,7 @@ public: /* api */
     TNode* prev = _tail->_M_prev;
     TNode* node = _tail;
 
-    if(prev != nullptr) {
+    if (prev != nullptr) {
       prev->_M_next = nullptr;
     } else {
       _head = nullptr;
@@ -147,11 +149,11 @@ public: /* api */
   }
 
   void insert(TNode* next, TNode& node) noexcept {
-    if(UNLIKELY(_head == next)) {
+    if (UNLIKELY(_head == next)) {
       return push_front(node);
     }
 
-    if(UNLIKELY(nullptr == next)) {
+    if (UNLIKELY(nullptr == next)) {
       return push_back(node);
     }
 
@@ -165,11 +167,11 @@ public: /* api */
   }
 
   void erase(TNode& node) noexcept {
-    if(UNLIKELY(_head == &node)) {
+    if (UNLIKELY(_head == &node)) {
       return pop_front();
     }
 
-    if(UNLIKELY(_tail == &node)) {
+    if (UNLIKELY(_tail == &node)) {
       return pop_back();
     }
 
@@ -207,7 +209,7 @@ public: /* api */
   }
 
   void clear() noexcept {
-    while(_head != nullptr) {
+    while (_head != nullptr) {
       pop_front();
     }
   }
@@ -215,12 +217,11 @@ public: /* api */
 public: /* extension */
 
   bool _ext_equal(std::list<TNode> /* copy */ expected) const noexcept {
-    for(TNode* node = _head; (node != nullptr) && (expected.empty() == false); node = node->_M_next) {
+    for (TNode* node = _head; (node != nullptr) && (expected.empty() == false); node = node->_M_next) {
       assert((node->_M_prev == nullptr) || (node->_M_prev->_M_next == node));
       assert((node->_M_next == nullptr) || (node->_M_next->_M_prev == node));
 
-
-      if(*node != expected.front()) {
+      if (*node != expected.front()) {
         return false;
       }
 

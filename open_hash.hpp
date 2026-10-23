@@ -22,7 +22,7 @@ public:
   explicit FixedOpenHash(int32_t capacity, float loadFactor = 0.5)
     : _capacity(capacity)
     , _step((capacity / 2) - 1)
-    , _size(0) 
+    , _size(0)
     , _loadFactor(loadFactor) //
   {
     assert(capacity >= 8);
@@ -74,21 +74,21 @@ public:
     int32_t idx = key & (_capacity - 1);
     int32_t firstTomb = npos;
 
-    for(int32_t iter = 0; iter < _capacity; ++iter) {
+    for (int32_t iter = 0; iter < _capacity; ++iter) {
       const bool isFree = _get_bit(_freeBits, idx);
       const bool isTomb = _get_bit(_tombBits, idx);
       const bool isUsed = ! isFree && ! isTomb;
 
-      if(isUsed && _keys[idx] == key) {
+      if (isUsed && _keys[idx] == key) {
         _values[idx] = value;
         return true;
       }
 
-      if(isTomb && firstTomb == npos) {
+      if (isTomb && firstTomb == npos) {
         firstTomb = idx;
       }
 
-      if(isFree) {
+      if (isFree) {
         firstTomb = (firstTomb != npos) ? firstTomb : idx;
         break;
       }
@@ -96,7 +96,7 @@ public:
       idx = (idx + _step) & (_capacity - 1);
     }
 
-    if(firstTomb == npos) {
+    if (firstTomb == npos) {
       return false;
     }
 
@@ -114,16 +114,16 @@ public:
   TValue* find(TKey key) const noexcept {
     int32_t idx = key & (_capacity - 1);
 
-    for(int32_t iter = 0; iter < _capacity; ++iter) {
+    for (int32_t iter = 0; iter < _capacity; ++iter) {
       const bool isFree = _get_bit(_freeBits, idx);
       const bool isTomb = _get_bit(_tombBits, idx);
       const bool isUsed = ! isFree && ! isTomb;
 
-      if(isUsed && _keys[idx] == key) {
+      if (isUsed && _keys[idx] == key) {
         return &_values[idx];
       }
 
-      if(isFree) {
+      if (isFree) {
         return nullptr;
       }
 
@@ -136,16 +136,16 @@ public:
   TValue findOrDefault(TKey key, TValue defaultValue) const noexcept {
     int32_t idx = key & (_capacity - 1);
 
-    for(int32_t iter = 0; iter < _capacity; ++iter) {
+    for (int32_t iter = 0; iter < _capacity; ++iter) {
       const bool isFree = _get_bit(_freeBits, idx);
       const bool isTomb = _get_bit(_tombBits, idx);
       const bool isUsed = ! isFree && ! isTomb;
 
-      if(isUsed && _keys[idx] == key) {
+      if (isUsed && _keys[idx] == key) {
         return _values[idx];
       }
 
-      if(isFree) {
+      if (isFree) {
         return defaultValue;
       }
 
@@ -158,18 +158,18 @@ public:
   bool erase(TKey key) noexcept {
     int32_t idx = key & (_capacity - 1);
 
-    for(int32_t iter = 0; iter < _capacity; ++iter) {
+    for (int32_t iter = 0; iter < _capacity; ++iter) {
       const bool isFree = _get_bit(_freeBits, idx);
       const bool isTomb = _get_bit(_tombBits, idx);
       const bool isUsed = ! isFree && ! isTomb;
 
-      if(isUsed && _keys[idx] == key) {
+      if (isUsed && _keys[idx] == key) {
         _set_bit(_tombBits, idx);
         --_size;
         return true;
       }
 
-      if(isFree) {
+      if (isFree) {
         return false;
       }
 
@@ -236,7 +236,7 @@ public:
   }
 
   ~OpenHash() {
-    while(_head) {
+    while (_head) {
       auto* next = _head->next;
       delete _head;
       _head = next;
@@ -245,15 +245,15 @@ public:
 
   OpenHash(OpenHash&&) = delete;
   OpenHash(const OpenHash&) = delete;
- 
+
   OpenHash& operator=(OpenHash&&) = delete;
   OpenHash& operator=(const OpenHash&) = delete;
 
   bool insert(TKey key, const TValue& value) {
-    for(Node* node = _head; node; node = node->next) {
+    for (Node* node = _head; node; node = node->next) {
       const bool result = node->hash.insert(key, value);
 
-      if(result) {
+      if (result) {
         return result;
       }
     }
@@ -266,10 +266,10 @@ public:
   }
 
   TValue* find(TKey key) const {
-    for(Node* node = _head; node; node = node->next) {
+    for (Node* node = _head; node; node = node->next) {
       TValue* found = node->hash.find(key);
 
-      if(found != nullptr) {
+      if (found != nullptr) {
         return found;
       }
     }
@@ -278,10 +278,10 @@ public:
   }
 
   TValue findOrDefault(TKey key, TValue defaultValue) const {
-    for(Node* node = _head; node; node = node->next) {
+    for (Node* node = _head; node; node = node->next) {
       TValue found = node->hash.findOrDefault(key, defaultValue);
 
-      if(found != defaultValue) {
+      if (found != defaultValue) {
         return found;
       }
     }
@@ -290,8 +290,8 @@ public:
   }
 
   bool erase(TKey key) {
-    for(Node* node = _head; node; node = node->next) {
-      if(node->hash.erase(key)) {
+    for (Node* node = _head; node; node = node->next) {
+      if (node->hash.erase(key)) {
         return true;
       }
     }

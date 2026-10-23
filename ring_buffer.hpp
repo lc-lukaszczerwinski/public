@@ -38,7 +38,7 @@ public: /* api */
 
   template<typename TT>
   bool push(TT&& t) noexcept {
-    if(full()) {
+    if (full()) {
       return false;
     }
 
@@ -49,7 +49,7 @@ public: /* api */
   }
 
   bool pop(TType& out) noexcept {
-    if(empty()) {
+    if (empty()) {
       return false;
     }
 
@@ -68,7 +68,7 @@ public: /* api */
   }
 
   uint8_t size() const noexcept {
-    if(_tail >= _head) {
+    if (_tail >= _head) {
       return _tail - _head;
     } else {
       return (TCapacity + 1) - (_head - _tail);
@@ -82,7 +82,7 @@ public: /* api */
   /* extension */ TType _ext_pop() {
     TType out;
 
-    if(! pop(out)) {
+    if (! pop(out)) {
       throw std::runtime_error("RingBuffer is empty");
     }
 
@@ -90,12 +90,12 @@ public: /* api */
   }
 
   /* extension */ bool _ext_equal(std::queue<TType> expected) const noexcept {
-    if(size() != expected.size()) {
+    if (size() != expected.size()) {
       return false;
     }
 
-    for(uint8_t i = _head; i != _tail; i = _index(i + 1)) {
-      if(_buffer[i] != expected.front()) {
+    for (uint8_t i = _head; i != _tail; i = _index(i + 1)) {
+      if (_buffer[i] != expected.front()) {
         return false;
       }
 
@@ -110,7 +110,7 @@ private:
   static constexpr uint8_t _index(uint8_t i) noexcept {
     constexpr bool isPowerOf2 = ((TCapacity + 1) & TCapacity) == 0;
 
-    if constexpr(isPowerOf2) {
+    if constexpr (isPowerOf2) {
       return i & TCapacity;
     } else {
       return (i == (TCapacity + 1) ? 0 : i); // return i % (TCapacity + 1);
